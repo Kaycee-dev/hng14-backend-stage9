@@ -1,0 +1,4 @@
+# Normalize line endings: store LF in the repo, check out native locally.
+# Critical for shell scripts that run on the Linux VPS (CRLF would break them).
+* text=auto eol=lf
+*.sh text eol=lf

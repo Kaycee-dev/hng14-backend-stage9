@@ -1,0 +1,48 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: scheduler
+      POSTGRES_PASSWORD: scheduler
+      POSTGRES_DB: scheduler
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend.Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://scheduler:scheduler@postgres:5432/scheduler
+      - NODE_ENV=production
+    depends_on:
+      - postgres
+
+  worker-1:
+    build:
+      context: .
+      dockerfile: worker.Dockerfile
+    environment:
+      - DATABASE_URL=postgresql://scheduler:scheduler@postgres:5432/scheduler
+      - WORKER_ID=worker-1
+    depends_on:
+      - postgres
+
+  worker-2:
+    build:
+      context: .
+      dockerfile: worker.Dockerfile
+    environment:
+      - DATABASE_URL=postgresql://scheduler:scheduler@postgres:5432/scheduler
+      - WORKER_ID=worker-2
+    depends_on:
+      - postgres
+
+volumes:
+  pgdata:

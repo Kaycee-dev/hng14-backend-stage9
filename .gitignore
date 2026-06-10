@@ -1,0 +1,27 @@
+# Dependencies / build output
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+!.env.prod.example
+
+# Runtime output (handler side effects, rebuilt at runtime — never commit)
+data/
+/data/
+
+# PGlite local database files
+pgdata/
+*.pglite
+
+# Logs
+*.log
+logs/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
