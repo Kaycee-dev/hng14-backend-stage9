@@ -45,6 +45,23 @@ The server emits only `id:` and `data:` fields because the client uses `EventSou
 the event type remains available in each JSON payload. This is reversible by restoring named
 `event:` fields and registering matching client event listeners.
 
+**ADR-012 · accepted · 2026-06-10 · Handler artifacts use a configurable data directory.**
+Handlers resolve artifact paths from `DATA_DIR`, defaulting to `/data` for the shared production
+volume; local verification can set `DATA_DIR=./data` to avoid host-specific root paths. This is
+reversible by changing the environment value or the default without changing handler contracts.
+
+**ADR-013 · accepted · 2026-06-10 · Report checksums use SHA-256 over the exact CSV bytes.**
+SHA-256 is available in Node's standard library and gives a deterministic integrity value for the
+artifact passed through the workflow. This is reversible while no external consumer depends on
+the checksum format.
+
+**ADR-014 · accepted · 2026-06-10 · Handler side effects use exclusive-create delivery markers
+and atomic file publication.** Email delivery is gated by a per-message marker created with
+`O_CREAT|O_EXCL` (`"wx"`), while reports and uploads are written to unique same-directory
+temporary files and renamed into place. This prevents duplicate outbox records and partial-file
+visibility during lease-overlap re-runs; it is reversible by changing the handler I/O primitives
+without changing their result contracts.
+
 ## Open decisions (decide, then promote to an ADR with rationale)
 
 **OPEN-A · Nginx / prod topology.** Single backend container serving UI + API behind Nginx
