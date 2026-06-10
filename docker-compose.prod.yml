@@ -2,7 +2,7 @@
 # Differences from the dev docker-compose.yml:
 #  - backend is published to 127.0.0.1 only (Nginx is the public edge; nothing else is exposed)
 #  - a shared `appdata` volume is mounted at /data in backend + both workers, so the DAG's
-#    upload_file step can read the file that generate_report wrote on another worker (GUARDRAILS §6)
+#    upload_file step can read the file that generate_report wrote on another worker
 #  - restart policies + TZ=UTC + secrets pulled from .env (never committed)
 
 services:

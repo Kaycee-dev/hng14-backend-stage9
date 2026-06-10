@@ -1,12 +1,12 @@
 # Deployment — manual VPS, DuckDNS, HTTPS, Nginx
 
-This is the lowest-friction robust path for the Stage 9 rubric: the app runs in Docker; **host
+This is the lowest-friction robust path for this project: the app runs in Docker; **host
 Nginx** terminates TLS (via Certbot) and reverse-proxies to the backend on `127.0.0.1:3000`.
 No managed platforms (no Heroku/Render/Railway/Fly).
 
 > **Do this dry-run on Tuesday or Wednesday, with the current build — not Friday.** DuckDNS DNS
-> propagation, Certbot issuance, and Nginx SSE buffering are the classic last-hour time sinks
-> (GUARDRAILS §13). Deploying early, even before the app is finished, de-risks the whole submission.
+> propagation, Certbot issuance, and Nginx SSE buffering are the classic last-hour time sinks.
+> Deploying early, even before the app is finished, de-risks the whole submission.
 
 ## 0. Prerequisites
 - A VPS you SSH into (EC2 / GCE / DigitalOcean / Hetzner / Azure VM — any).
@@ -79,6 +79,6 @@ docker compose -f docker-compose.prod.yml up -d --build
 ## Notes
 - Certs auto-renew via the Certbot systemd timer; `sudo certbot renew --dry-run` to confirm.
 - The `appdata` volume keeps `/data` shared across backend + workers so the DAG's `upload_file`
-  step can read the report `generate_report` wrote — do not remove it (GUARDRAILS §6).
+  step can read the report `generate_report` wrote — do not remove it.
 - `docker compose -f docker-compose.prod.yml down` stops the stack; **never add `-v`** against the
-  DB volume holding demo data you intend to present (GUARDRAILS §15).
+  DB volume holding demo data you intend to present.

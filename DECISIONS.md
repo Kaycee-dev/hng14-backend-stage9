@@ -6,8 +6,8 @@ ADR with the date and rationale. Format: **status · date · decision · why**.
 ## Locked decisions (already embodied in the scaffold — do not silently change)
 
 **ADR-001 · locked · Stack: TypeScript + Node + Express + `pg`.**
-PGlite is a local-only fallback when `DATABASE_URL` is unset (ephemeral, single-process — see
-GUARDRAILS §3). Chosen because the scaffold is already built on it; retargeting to Python now
+PGlite is a local-only fallback when `DATABASE_URL` is unset (ephemeral and single-process).
+Chosen because the scaffold is already built on it; retargeting to Python now
 would cost more than the deadline allows.
 
 **ADR-002 · locked · Worker runtime: one codebase, run via `tsx`.**
@@ -24,21 +24,20 @@ Postgres `LISTEN/NOTIFY` is a noted future upgrade, not required.
 
 **ADR-005 · locked · Scheduler: real binary `MinHeap`.**
 Key `[effective_priority, scheduled_at, created_at, job_id]`, lower wins; rebuilt each poll because
-effective priority is time-dependent. GUARDRAILS §4.
+effective priority is time-dependent.
 
 **ADR-006 · locked · Alternative algorithm: Timing wheel (60 slots, 1s tick) + overflow list +
-within-bucket priority sort.** Benchmarked against the heap; honest framing in STAGE9_BUILD_PACK §16.
+within-bucket priority sort.** Benchmarked against the heap.
 
 **ADR-007 · locked · Retry: up to 4 executions (retry_count = failures), backoff 1/5/25s ±25%
-jitter, DLQ after the 4th failure.** GUARDRAILS §9.
+jitter, DLQ after the 4th failure.**
 
 **ADR-008 · locked · Recurrence: next = scheduled_at + interval, clamp-to-now (no backfill),
-success-only, stop on terminal failure or cancellation.** GUARDRAILS §10.
+success-only, stop on terminal failure or cancellation.**
 
 **ADR-009 · locked · DLQ alert hysteresis (fire at 4→5 armed, re-arm below 5) via `app_flags`.**
-GUARDRAILS §12.
 
-**ADR-010 · locked · Timestamps UTC in storage/wire; Africa/Lagos for display only.** GUARDRAILS §11.
+**ADR-010 · locked · Timestamps UTC in storage/wire; Africa/Lagos for display only.**
 
 **ADR-011 · accepted · 2026-06-10 · SSE uses unnamed messages.**
 The server emits only `id:` and `data:` fields because the client uses `EventSource.onmessage`;
@@ -73,11 +72,11 @@ connection branch.
 
 **OPEN-A · Nginx / prod topology.** Single backend container serving UI + API behind Nginx
 (current build supports this), vs a separate static-frontend container. Decide before the deploy
-dry-run (GUARDRAILS §13).
+dry-run.
 
 **OPEN-B · Test runner + scope.** Whether to add `vitest` and which tests. Minimum bar: the
-concurrency claim test that proves duplicate protection (SPEC, STAGE9_BUILD_PACK §22).
+concurrency claim test that proves duplicate protection.
 
 **OPEN-C · Generic `POST /api/workflows` + topological-sort validation.** Today only the demo
 endpoint exists. Decide whether to add generic creation with cycle/self/unknown-ref rejection
-(Kahn's algorithm, STAGE9_BUILD_PACK §15) or rely on the demo endpoint for the DAG workflow requirement.
+(Kahn's algorithm) or rely on the demo endpoint for the DAG workflow requirement.
