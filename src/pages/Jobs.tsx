@@ -23,7 +23,7 @@ export function Jobs() {
 
   async function handleCancel(id: string) {
     try {
-      await fetch(`/api/jobs/\${id}/cancel`, { method: "POST" });
+      await fetch(`/api/jobs/${id}/cancel`, { method: "POST" });
       fetchJobs();
     } catch (e) { console.error(e); }
   }

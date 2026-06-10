@@ -28,7 +28,7 @@ export function WorkflowDemo() {
       
       // Fetch results for these to show data passing
       const detailed = await Promise.all(wJobs.map(async (j: any) => {
-        const dRes = await fetch(`/api/jobs/\${j.id}`);
+        const dRes = await fetch(`/api/jobs/${j.id}`);
         return await dRes.json();
       }));
       setJobs(detailed);

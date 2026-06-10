@@ -11,7 +11,7 @@ export function DLQ() {
 
   async function handleRetry(id: string) {
     try {
-      await fetch(`/api/dlq/\${id}/retry`, { method: "POST" });
+      await fetch(`/api/dlq/${id}/retry`, { method: "POST" });
       fetchDLQ();
     } catch (e) { console.error(e); }
   }

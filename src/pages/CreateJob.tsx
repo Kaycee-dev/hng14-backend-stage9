@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 
 export function CreateJob() {
@@ -11,7 +11,7 @@ export function CreateJob() {
     recurring_interval: ""
   });
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     try {
       const parsedPayload = JSON.parse(form.payload);

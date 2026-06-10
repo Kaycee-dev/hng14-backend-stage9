@@ -1,4 +1,4 @@
-import { effectivePriority } from "../aging";
+import { effectivePriority } from "./aging";
 
 export class TimingWheel {
   public slots: number;

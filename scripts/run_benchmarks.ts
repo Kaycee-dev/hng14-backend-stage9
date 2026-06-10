@@ -46,7 +46,7 @@ function runBenchmark(scenarioName: string, numJobs: number, priorityG: () => nu
   const wheelEnd = Date.now();
   const wheelOps = Math.floor((numJobs + poppedCount) / ((wheelEnd - wheelStart) / 1000) || 1);
 
-  console.log(\`\${scenarioName} (10k items) | Heap: \${heapOps} ops/sec | Wheel: \${wheelOps} ops/sec\`);
+  console.log(`${scenarioName} (10k items) | Heap: ${heapOps} ops/sec | Wheel: ${wheelOps} ops/sec`);
 }
 
 console.log("Running benchmarks...");

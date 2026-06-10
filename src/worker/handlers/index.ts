@@ -18,7 +18,7 @@ export function generate_report(job: any): Step[] {
     {
       name: "write_file",
       run: async () => { 
-        return { file_path: `/data/reports/\${job.id}.csv`, checksum: "abcdef123" };
+        return { file_path: `/data/reports/${job.id}.csv`, checksum: "abcdef123" };
       }
     }
   ];
@@ -52,7 +52,7 @@ export function upload_file(job: any): Step[] {
       name: "upload",
       run: async (db, j, resInfo) => {
         await new Promise(r => setTimeout(r, 150));
-        return { url: `mock://bucket/\${j.id}` };
+        return { url: `mock://bucket/${j.id}` };
       }
     }
   ];
@@ -67,7 +67,7 @@ export function send_email(job: any): Step[] {
           throw new Error("Intentional failure triggered by payload");
         }
         await new Promise(r => setTimeout(r, 100));
-        return { message_id: `msg-\${job.id}` };
+        return { message_id: `msg-${job.id}` };
       }
     }
   ];

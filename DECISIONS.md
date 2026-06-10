@@ -40,6 +40,11 @@ GUARDRAILS §12.
 
 **ADR-010 · locked · Timestamps UTC in storage/wire; Africa/Lagos for display only.** GUARDRAILS §11.
 
+**ADR-011 · accepted · 2026-06-10 · SSE uses unnamed messages.**
+The server emits only `id:` and `data:` fields because the client uses `EventSource.onmessage`;
+the event type remains available in each JSON payload. This is reversible by restoring named
+`event:` fields and registering matching client event listeners.
+
 ## Open decisions (decide, then promote to an ADR with rationale)
 
 **OPEN-A · Nginx / prod topology.** Single backend container serving UI + API behind Nginx

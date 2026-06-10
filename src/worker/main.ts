@@ -23,7 +23,7 @@ export async function pollOnce(workerId: string, now: Date) {
 }
 
 export async function runWorkerLoop(workerId: string, intervalSeconds: number) {
-  console.log(`Starting worker loop for \${workerId} ...`);
+  console.log(`Starting worker loop for ${workerId} ...`);
   while (true) {
     try {
       await pollOnce(workerId, new Date());

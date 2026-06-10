@@ -186,7 +186,10 @@ async function startServer() {
         for (const row of result.rows) {
           last = row.id;
           const payload = JSON.stringify(row);
-          res.write(`id: \${row.id}\\nevent: \${row.event_type}\\ndata: \${payload}\\n\\n`);
+          res.write(`id: ${row.id}
+data: ${payload}
+
+`);
         }
       } catch (e: any) { 
         console.error("SSE Poll Error", e.message); 
@@ -212,7 +215,7 @@ async function startServer() {
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:\${PORT}`);
+    console.log(`Server running on http://localhost:${PORT}`);
   });
 }
 
