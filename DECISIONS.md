@@ -12,7 +12,7 @@ would cost more than the deadline allows.
 
 **ADR-002 · locked · Worker runtime: one codebase, run via `tsx`.**
 Locally `server.ts` spawns `runWorkerLoop()` in-process for convenience; in `docker-compose.yml`
-the workers are separate containers (`worker-1`, `worker-2`). The "independent workers" rubric is
+the workers are separate containers (`worker-1`, `worker-2`). The independent-workers requirement is
 satisfied by the container topology, demonstrated via `docker compose up`.
 
 **ADR-003 · locked · DB schema via idempotent `initSchema()` DDL on connect; no migration tool.**
@@ -62,6 +62,13 @@ temporary files and renamed into place. This prevents duplicate outbox records a
 visibility during lease-overlap re-runs; it is reversible by changing the handler I/O primitives
 without changing their result contracts.
 
+**ADR-015 · accepted · 2026-06-10 · PGlite uses `.exec()` for paramless SQL and `.query()` for
+parameterized SQL.** This resolves OPEN-D: PGlite's simple protocol accepts the multi-statement
+DDL used by `initSchema()`, while its extended protocol remains appropriate for single
+parameterized statements. The adapter returns the final `.exec()` result's rows, or an empty
+array, preserving the `DBClient.query` contract; this is reversible within the PGlite-only
+connection branch.
+
 ## Open decisions (decide, then promote to an ADR with rationale)
 
 **OPEN-A · Nginx / prod topology.** Single backend container serving UI + API behind Nginx
@@ -73,4 +80,4 @@ concurrency claim test that proves duplicate protection (SPEC, STAGE9_BUILD_PACK
 
 **OPEN-C · Generic `POST /api/workflows` + topological-sort validation.** Today only the demo
 endpoint exists. Decide whether to add generic creation with cycle/self/unknown-ref rejection
-(Kahn's algorithm, STAGE9_BUILD_PACK §15) or rely on the demo endpoint for the DAG rubric row.
+(Kahn's algorithm, STAGE9_BUILD_PACK §15) or rely on the demo endpoint for the DAG workflow requirement.

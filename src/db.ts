@@ -22,6 +22,11 @@ export async function getDb(): Promise<DBClient> {
     const pglite = new PGlite();
     pool = {
       query: async (text: string, params?: any[]) => {
+        if (!params || params.length === 0) {
+          const results = await pglite.exec(text);
+          return { rows: results.at(-1)?.rows ?? [] };
+        }
+
         return (await pglite.query(text, params)) as any;
       }
     };
