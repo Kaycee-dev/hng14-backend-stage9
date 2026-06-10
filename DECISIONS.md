@@ -68,14 +68,16 @@ parameterized statements. The adapter returns the final `.exec()` result's rows,
 array, preserving the `DBClient.query` contract; this is reversible within the PGlite-only
 connection branch.
 
+**ADR-016 · accepted · 2026-06-10 · Vitest is the project test runner.**
+Vitest fits the existing TypeScript and ESM toolchain, while the initial integration test uses
+real PostgreSQL connections to exercise concurrent claims against one job. This is reversible
+by replacing the package scripts, runner configuration, and test imports.
+
 ## Open decisions (decide, then promote to an ADR with rationale)
 
 **OPEN-A · Nginx / prod topology.** Single backend container serving UI + API behind Nginx
 (current build supports this), vs a separate static-frontend container. Decide before the deploy
 dry-run.
-
-**OPEN-B · Test runner + scope.** Whether to add `vitest` and which tests. Minimum bar: the
-concurrency claim test that proves duplicate protection.
 
 **OPEN-C · Generic `POST /api/workflows` + topological-sort validation.** Today only the demo
 endpoint exists. Decide whether to add generic creation with cycle/self/unknown-ref rejection
