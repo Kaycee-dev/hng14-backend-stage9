@@ -46,7 +46,7 @@ export function DLQ() {
                   <div className="text-rose-400 bg-rose-500/10 p-2 rounded-lg border border-rose-500/20 font-mono text-xs whitespace-pre-wrap">{item.error_message}</div>
                 </td>
                 <td className="p-4 text-slate-300">
-                  {new Date(item.moved_at).toLocaleString()}
+                  {new Date(item.moved_at).toLocaleString('en-GB', { timeZone: 'Africa/Lagos' })}
                 </td>
                 <td className="p-4 text-right">
                   <button onClick={() => handleRetry(item.job_id)} className="px-3 py-1.5 bg-indigo-600 text-white rounded hover:bg-indigo-500 transition-colors">

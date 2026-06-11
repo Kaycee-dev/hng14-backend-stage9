@@ -70,7 +70,7 @@ export function Jobs() {
                   <div className="text-xs text-slate-500">Retries: {job.retry_count} / {job.max_retries}</div>
                 </td>
                 <td className="p-4">
-                  <div className="text-slate-300">{new Date(job.scheduled_at).toLocaleString()}</div>
+                  <div className="text-slate-300">{new Date(job.scheduled_at).toLocaleString('en-GB', { timeZone: 'Africa/Lagos' })}</div>
                   {job.recurring_interval && <div className="text-xs text-indigo-400 font-medium">↻ {job.recurring_interval}</div>}
                 </td>
                 <td className="p-4 text-right">

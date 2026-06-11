@@ -1,20 +1,54 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# Dilamme Job Orchestrator
 
-# Run and deploy your AI Studio app
+Dilamme is a background job-orchestration platform. Jobs are created through
+the UI or API, queued in PostgreSQL, processed by independent workers, and
+tracked live in the browser.
 
-This contains everything you need to run your app locally.
+The platform supports scheduled and recurring jobs, automatic retries and a
+dead-letter queue, dependency-based DAG workflows, atomic duplicate
+protection, and aging-based starvation prevention. Its default scheduler uses
+a binary min-heap, with a benchmarked timing-wheel implementation available as
+an alternative.
 
-View your app in AI Studio: https://ai.studio/apps/9bd05d27-1096-4395-aae5-b3598fe12f23
+## Live Demo
+
+https://hng14-stage9-vm.duckdns.org/
 
 ## Run Locally
 
-**Prerequisites:**  Node.js
+The zero-setup development mode uses the in-process PGlite fallback and runs
+the API, UI, and worker in a single process.
 
+```bash
+npm install
+npm run dev
+```
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+Open http://localhost:3000.
+
+## Run With Docker
+
+The Docker stack uses PostgreSQL and runs the backend plus two independent
+workers with a shared data volume.
+
+```bash
+docker compose up --build
+```
+
+Open http://localhost:3000.
+
+## Tests
+
+```bash
+npm test
+```
+
+Pure tests always run. Database-backed tests require `TEST_DATABASE_URL` or
+`DATABASE_URL` to point to a real PostgreSQL database.
+
+## Documentation
+
+- [Architecture](docs/architecture.md)
+- [Deployment](docs/deployment.md) for the manual VPS, DuckDNS, HTTPS, and
+  Nginx setup
+- [Postman API collection](postman/stage9.postman_collection.json)
