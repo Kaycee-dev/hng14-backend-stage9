@@ -1,21 +1,55 @@
 # Scheduler Benchmark Results
 
-We compared the \`O(log n)\` exact-priority Min-Heap against an \`O(1)\` 60-slot Timing Wheel.
+This benchmark compares the `O(log n)` exact-ordering Min-Heap with the
+`O(1)` slot insertion of a 60-slot, one-second Timing Wheel.
 
-## The Benchmark Hardware
-Evaluations ran on standard 2.0GHz linux environments under synthetic load testing 10,000 generated job objects using Node's standard math/time subsystems.
+## Method
 
-## Numbers Table
+The command `npx tsx scripts/run_benchmarks.ts` was run three times on
+2026-06-11 on an HP EliteBook 840 G8 development laptop with an 11th Gen
+Intel Core i7-1185G7 CPU, Windows 11 Pro, and Node.js v22.20.0. The table
+uses the second run, which was representative of the three.
 
-| Scenario | Min-Heap (ops/sec) | Timing Wheel (ops/sec) | Winner |
-|---|---|---|---|
-| Immediate (All due now) | 18,205 | 29,150 | Timing Wheel |
-| Scheduled Spread (over 60s) | 12,010 | 32,800 | Timing Wheel |
-| Mixed Priority | 14,350 | 11,500 | Min-Heap |
+This is an in-process micro-benchmark with 10,000 synthetic jobs per
+scenario. It measures combined bulk insertion and extraction throughput:
+the heap pushes and pops every job, while the wheel adds every job and
+advances all 60 slots to collect due jobs. The short runtime and
+millisecond timer resolution produce visible run-to-run variance, so these
+figures are a directional comparison rather than a capacity forecast.
 
-## Trade-off Analysis
-Our priority engine requires robust, cross-functional ranking capabilities where multi-variable time aging naturally shifts candidate queue positions. 
+## Results
 
-The Timing Wheel dominates straightforward \`O(1)\` slot insertions with scheduled-spread tasks. However, its efficiency degrades significantly within complex priority sorting configurations due to intra-bucket fallback iterations. Additionally, the far-future overflow allocations enforce extra list traversals every 60-seconds (rotation refresh).
+| Scenario | Min-Heap (ops/sec) | Timing Wheel (ops/sec) | Higher throughput |
+|---|---:|---:|---|
+| Immediate | 526,315 | 1,052,631 | Timing Wheel |
+| Scheduled Spread | 689,655 | 800,000 | Timing Wheel |
+| Mixed Priority | 2,000,000 | 344,827 | Min-Heap |
 
-**Conclusion:** The **Min-Heap** provides perfect exact ordering consistently and is deployed as the core algorithm because exact priority aging aligns fundamentally with product requirements. Timing wheels remain advantageous for mass-timer systems with highly predictable delays.
+## Trade-offs
+
+The production heap provides exact `O(log n)` ordering on the locked key
+`[effective_priority, scheduled_at, created_at, job_id]`. It is rebuilt on
+each worker poll because effective priority changes with time. At the
+queue depths this system targets, that cost is modest, and the heap gives
+the required priority and time ordering without a separate bucket-ordering
+step.
+
+The timing wheel inserts into a time slot in `O(1)`, which can help on
+insert-heavy workloads and jobs spread across its scheduling horizon. That
+speed comes with slot-granular time resolution. Jobs beyond one wheel
+rotation require overflow bookkeeping on every rotation, and jobs sharing
+a bucket still require a priority sort before they can be claimed in the
+right order.
+
+The algorithms are complementary, not interchangeable. The wheel's
+throughput edge on the immediate and scheduled-spread shapes is paid for
+in timing resolution, overflow handling, and within-bucket sorting; the
+heap directly supplies exact ordering. We run the heap because exact
+priority ordering is a product requirement and expected queue depth is
+modest. The timing wheel remains the benchmarked alternative for workloads
+where insertion volume matters more than exact scheduling resolution.
+
+These numbers capture only the harness's in-process throughput for its
+three synthetic shapes. They do not measure database access, concurrent
+workers, claim contention, end-to-end latency, memory use, or the timing
+wheel's operational cost from coarse resolution and far-future overflow.
