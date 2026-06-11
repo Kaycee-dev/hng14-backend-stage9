@@ -2,6 +2,10 @@ import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { getDb } from "./src/db";
+import {
+  validateWorkflow,
+  type WfJob
+} from "./src/services/dag_validation";
 import cors from "cors";
 
 // Keep zero-setup development convenient while production uses separate workers.
@@ -139,6 +143,66 @@ async function startServer() {
       const depsRes = await db.query(`SELECT depends_on_job_id FROM job_dependencies WHERE job_id=$1`, [id]);
       
       res.json({ ...job, logs: logsRes.rows, dependencies: depsRes.rows.map(r => r.depends_on_job_id) });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.post("/api/workflows", async (req, res) => {
+    const jobs = req.body?.jobs as WfJob[];
+    const validation = validateWorkflow(jobs);
+    if (validation.ok === false) {
+      return res.status(400).json({ error: validation.error });
+    }
+
+    try {
+      const db = await getDb();
+      const wfId = '00000000-0000-0000-0000-000000000000'.replace(/0/g, () => (Math.random()*16|0).toString(16));
+      const jobsByClientId = new Map(
+        jobs.map((job) => [job.client_id, job])
+      );
+      const idsByClientId = new Map<string, string>();
+
+      for (const clientId of validation.order) {
+        const job = jobsByClientId.get(clientId)!;
+        const scheduledAt = job.scheduled_at
+          ? new Date(job.scheduled_at)
+          : new Date();
+        const priority = job.priority || 2;
+        const payload = job.payload ? JSON.stringify(job.payload) : '{}';
+        const result = await db.query(
+          `INSERT INTO jobs (type, priority, payload, scheduled_at, recurring_interval, workflow_id)
+           VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+          [
+            job.type,
+            priority,
+            payload,
+            scheduledAt,
+            job.recurring_interval,
+            wfId
+          ]
+        );
+        idsByClientId.set(clientId, result.rows[0].id);
+      }
+
+      for (const job of jobs) {
+        for (const dependency of job.depends_on ?? []) {
+          await db.query(
+            `INSERT INTO job_dependencies (job_id, depends_on_job_id)
+             VALUES ($1, $2)`,
+            [
+              idsByClientId.get(job.client_id),
+              idsByClientId.get(dependency)
+            ]
+          );
+        }
+      }
+
+      res.status(201).json({
+        workflow_id: wfId,
+        jobs: jobs.map((job) => ({
+          client_id: job.client_id,
+          id: idsByClientId.get(job.client_id)
+        }))
+      });
     } catch (e: any) { res.status(500).json({ error: e.message }); }
   });
 

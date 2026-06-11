@@ -86,8 +86,9 @@ that serves both the built UI and API, with separate worker containers and Postg
 it. This matches the current build and reduces deployment components; it is reversible by moving
 the static UI into a separate container and updating Nginx routes.
 
-## Open decisions (decide, then promote to an ADR with rationale)
-
-**OPEN-C · Generic `POST /api/workflows` + topological-sort validation.** Today only the demo
-endpoint exists. Decide whether to add generic creation with cycle/self/unknown-ref rejection
-(Kahn's algorithm) or rely on the demo endpoint for the DAG workflow requirement.
+**ADR-019 · accepted · 2026-06-11 · Generic workflows use creation-time Kahn validation.**
+`POST /api/workflows` accepts client aliases and dependency references, rejects duplicate aliases,
+self-dependencies, unknown references, and cycles before database insertion, then stores the jobs
+and dependency edges under one workflow ID. The `report-email-demo` endpoint remains unchanged for
+backward compatibility with the existing Workflow Demo UI. This is reversible by removing the
+generic route and validator while retaining the demo endpoint and stored dependency model.
