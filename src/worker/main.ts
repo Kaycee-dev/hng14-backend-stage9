@@ -6,6 +6,11 @@ import { logJobEvent } from "./logger";
 
 export async function pollOnce(workerId: string, now: Date) {
   const db = await getDb();
+  await db.query(
+    `INSERT INTO worker_heartbeat (worker_id, last_seen) VALUES ($1, $2)
+     ON CONFLICT (worker_id) DO UPDATE SET last_seen = $2`,
+    [workerId, now]
+  );
   await reapExpiredLeases(db, now);
   const candidates = await fetchDueAndReady(db, now, 100);
   const heap = buildHeap(candidates, now);

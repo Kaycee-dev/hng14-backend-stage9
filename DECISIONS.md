@@ -73,11 +73,20 @@ Vitest fits the existing TypeScript and ESM toolchain, while the initial integra
 real PostgreSQL connections to exercise concurrent claims against one job. This is reversible
 by replacing the package scripts, runner configuration, and test imports.
 
-## Open decisions (decide, then promote to an ADR with rationale)
+**ADR-017 · accepted · 2026-06-11 · Production API and worker processes remain independent.**
+The API starts an in-process worker only when `NODE_ENV` is not `production`; production jobs
+are handled by separately managed worker processes, so API availability does not depend on job
+execution. Each worker upserts its latest poll time into `worker_heartbeat`, and the dashboard
+counts rows seen within 30 seconds instead of reporting a fixed value. This is reversible by
+changing the environment gate or heartbeat freshness window.
 
-**OPEN-A · Nginx / prod topology.** Single backend container serving UI + API behind Nginx
-(current build supports this), vs a separate static-frontend container. Decide before the deploy
-dry-run.
+**ADR-018 · accepted · 2026-06-11 · Host Nginx fronts one backend container serving UI and API.**
+The deployed topology uses host Nginx for TLS and reverse proxying to a single backend container
+that serves both the built UI and API, with separate worker containers and PostgreSQL alongside
+it. This matches the current build and reduces deployment components; it is reversible by moving
+the static UI into a separate container and updating Nginx routes.
+
+## Open decisions (decide, then promote to an ADR with rationale)
 
 **OPEN-C · Generic `POST /api/workflows` + topological-sort validation.** Today only the demo
 endpoint exists. Decide whether to add generic creation with cycle/self/unknown-ref rejection

@@ -61,6 +61,11 @@ export async function initSchema(db: DBClient) {
       value JSONB
     );
 
+    CREATE TABLE IF NOT EXISTS worker_heartbeat (
+      worker_id VARCHAR(100) PRIMARY KEY,
+      last_seen TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+    );
+
     CREATE INDEX IF NOT EXISTS ix_jobs_ready ON jobs (status, scheduled_at);
     CREATE INDEX IF NOT EXISTS ix_jobs_lease ON jobs (locked_until) WHERE status = 'processing';
     CREATE INDEX IF NOT EXISTS ix_jobdep_job ON job_dependencies (job_id);

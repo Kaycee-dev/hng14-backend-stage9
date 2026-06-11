@@ -4,11 +4,11 @@ import { createServer as createViteServer } from "vite";
 import { getDb } from "./src/db";
 import cors from "cors";
 
-// Trigger the local worker loop. In a production VPS deployment, 
-// this is managed via docker-compose and run as a separate container.
-// Here we spawn it asynchronously so it runs in the local AI studio container.
+// Keep zero-setup development convenient while production uses separate workers.
 import { runWorkerLoop } from "./src/worker/main";
-runWorkerLoop(process.env.WORKER_ID || "worker-local", 1);
+if (process.env.NODE_ENV !== "production") {
+  runWorkerLoop(process.env.WORKER_ID || "worker-local", 1);
+}
 
 
 async function startServer() {
@@ -29,12 +29,17 @@ async function startServer() {
         SELECT status, count(*) as c FROM jobs GROUP BY status
       `);
       const dlqCount = await db.query(`SELECT count(*) as c FROM dead_letter_queue WHERE resolved_at IS NULL`);
+      const activeWorkerCount = await db.query(`
+        SELECT count(*)::int AS c FROM worker_heartbeat
+        WHERE last_seen > now() - interval '30 seconds'
+      `);
       
-      const stats = { pending: 0, processing: 0, completed: 0, failed: 0, cancelled: 0, dlq: 0, active_workers: 1 };
+      const stats = { pending: 0, processing: 0, completed: 0, failed: 0, cancelled: 0, dlq: 0, active_workers: 0 };
       counts.rows.forEach(r => {
         (stats as any)[r.status] = parseInt(r.c, 10);
       });
       stats.dlq = parseInt(dlqCount.rows[0].c, 10);
+      stats.active_workers = Number(activeWorkerCount.rows[0].c);
       
       res.json(stats);
     } catch (e: any) { res.status(500).json({ error: e.message }); }
