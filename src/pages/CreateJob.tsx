@@ -16,7 +16,11 @@ export function CreateJob() {
     try {
       const parsedPayload = JSON.parse(form.payload);
       const data = { ...form, payload: parsedPayload };
-      if (!data.scheduled_at) delete data.scheduled_at;
+      if (data.scheduled_at) {
+        data.scheduled_at = new Date(data.scheduled_at).toISOString();
+      } else {
+        delete data.scheduled_at;
+      }
       if (!data.recurring_interval) delete data.recurring_interval;
 
       await fetch("/api/jobs", {
@@ -38,8 +42,10 @@ export function CreateJob() {
         <button className="px-3 py-1 bg-slate-800 text-slate-300 text-sm rounded border border-slate-700 hover:bg-slate-700 transition-colors" onClick={() => setForm({...form, type: 'send_email', payload: '{}', recurring_interval: ''})}>Create Email Job</button>
         <button className="px-3 py-1 bg-slate-800 text-rose-400 text-sm rounded border border-slate-700 hover:bg-slate-700 transition-colors" onClick={() => setForm({...form, type: 'send_email', payload: '{"fail": true}', recurring_interval: ''})}>Create Failing Job</button>
         <button className="px-3 py-1 bg-slate-800 text-indigo-400 text-sm rounded border border-slate-700 hover:bg-slate-700 transition-colors" onClick={() => {
-            const d = new Date(); d.setSeconds(d.getSeconds() + 30);
-            setForm({...form, scheduled_at: d.toISOString().slice(0, 16)})
+            const d = new Date(Date.now() + 30_000);
+            const local = new Date(d.getTime() - d.getTimezoneOffset() * 60_000)
+              .toISOString().slice(0, 19);
+            setForm({...form, scheduled_at: local})
         }}>Schedule +30s</button>
         <button className="px-3 py-1 bg-slate-800 text-emerald-400 text-sm rounded border border-slate-700 hover:bg-slate-700 transition-colors" onClick={() => setForm({...form, recurring_interval: 'every_1_minute'})}>Recurring 1m</button>
       </div>
@@ -68,7 +74,7 @@ export function CreateJob() {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-400 mb-1">Scheduled At (optional)</label>
-            <input type="datetime-local" value={form.scheduled_at} onChange={e => setForm({...form, scheduled_at: e.target.value})} className="w-full p-2 bg-[#0A0C10] border border-slate-700 rounded text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all [color-scheme:dark]" />
+            <input type="datetime-local" step="1" value={form.scheduled_at} onChange={e => setForm({...form, scheduled_at: e.target.value})} className="w-full p-2 bg-[#0A0C10] border border-slate-700 rounded text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all [color-scheme:dark]" />
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-400 mb-1">Recurring Interval</label>
