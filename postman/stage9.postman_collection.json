@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "b72a1ef5-cb76-42df-92f9-ad294759be87",
     "name": "Stage 9 Background Job Scheduler",
-    "description": "Core job endpoints. The SSE stream at GET /api/events/jobs is long-lived and emits unnamed messages with job-log JSON in each data field.",
+    "description": "Runnable checks for the background job scheduler API. Import this collection with either the local or live environment, select that environment, then run Dashboard, Jobs, Workflows, and DLQ in order. Live Events contains a long-lived SSE stream and is intended for manual use.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -13,38 +13,89 @@
     {
       "key": "jobId",
       "value": ""
+    },
+    {
+      "key": "workflowJobId",
+      "value": ""
+    },
+    {
+      "key": "scheduledAt",
+      "value": ""
+    },
+    {
+      "key": "dlqJobAvailable",
+      "value": "false"
     }
   ],
   "item": [
     {
-      "name": "Create job",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"type\": \"generate_report\",\n  \"priority\": 2,\n  \"payload\": {\n    \"requested_by\": \"postman\"\n  }\n}"
-        },
-        "url": {
-          "raw": "{{baseUrl}}/api/jobs",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "jobs"
-          ]
-        }
-      },
-      "response": [
+      "name": "Dashboard",
+      "item": [
         {
-          "name": "Created",
-          "originalRequest": {
+          "name": "Get dashboard",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status ok', () => pm.expect(pm.response.code).to.eql(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('dashboard has active_workers', () => pm.expect(body).to.have.property('active_workers'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "description": "Returns scheduler totals and the current active worker count.",
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dashboard"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Jobs",
+      "item": [
+        {
+          "name": "Create job",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "pm.collectionVariables.set('scheduledAt', new Date(Date.now() + 5 * 60 * 1000).toISOString());"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status created', () => pm.expect(pm.response.code).to.eql(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('created job has an id', () => pm.expect(body.id).to.be.a('string').and.not.empty);",
+                  "pm.test('created job is pending', () => pm.expect(body.status).to.eql('pending'));",
+                  "pm.collectionVariables.set('jobId', body.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "description": "Creates a report job scheduled five minutes ahead and saves its ID.",
             "method": "POST",
             "header": [
               {
@@ -54,170 +105,143 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"type\": \"generate_report\",\n  \"priority\": 2,\n  \"payload\": {\n    \"requested_by\": \"postman\"\n  }\n}"
+              "raw": "{\n  \"type\": \"generate_report\",\n  \"priority\": 2,\n  \"payload\": {\n    \"requested_by\": \"postman\"\n  },\n  \"scheduled_at\": \"{{scheduledAt}}\"\n}"
             },
-            "url": "{{baseUrl}}/api/jobs"
+            "url": {
+              "raw": "{{baseUrl}}/api/jobs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "jobs"
+              ]
+            }
           },
-          "status": "Created",
-          "code": 201,
-          "_postman_previewlanguage": "json",
-          "header": [
+          "response": []
+        },
+        {
+          "name": "Get job",
+          "event": [
             {
-              "key": "Content-Type",
-              "value": "application/json"
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status ok', () => pm.expect(pm.response.code).to.eql(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('requested job is returned', () => pm.expect(body.id).to.eql(pm.collectionVariables.get('jobId')));"
+                ],
+                "type": "text/javascript"
+              }
             }
           ],
-          "cookie": [],
-          "body": "{\"id\":\"<uuid>\",\"type\":\"generate_report\",\"status\":\"pending\"}"
-        }
-      ]
-    },
-    {
-      "name": "List jobs",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/api/jobs",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "jobs"
-          ]
-        }
-      },
-      "response": [
-        {
-          "name": "OK",
-          "originalRequest": {
+          "request": {
+            "description": "Gets the job created earlier in the Jobs folder.",
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/api/jobs"
+            "url": {
+              "raw": "{{baseUrl}}/api/jobs/{{jobId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "jobs",
+                "{{jobId}}"
+              ]
+            }
           },
-          "status": "OK",
-          "code": 200,
-          "_postman_previewlanguage": "json",
-          "header": [
+          "response": []
+        },
+        {
+          "name": "List jobs",
+          "event": [
             {
-              "key": "Content-Type",
-              "value": "application/json"
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status ok', () => pm.expect(pm.response.code).to.eql(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('job list has items', () => pm.expect(body.items).to.be.an('array'));"
+                ],
+                "type": "text/javascript"
+              }
             }
           ],
-          "cookie": [],
-          "body": "{\"items\":[]}"
-        }
-      ]
-    },
-    {
-      "name": "Get job",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/api/jobs/{{jobId}}",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "jobs",
-            "{{jobId}}"
-          ]
-        }
-      },
-      "response": [
-        {
-          "name": "OK",
-          "originalRequest": {
+          "request": {
+            "description": "Lists jobs and verifies the paginated items shape.",
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/api/jobs/{{jobId}}"
+            "url": {
+              "raw": "{{baseUrl}}/api/jobs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "jobs"
+              ]
+            }
           },
-          "status": "OK",
-          "code": 200,
-          "_postman_previewlanguage": "json",
-          "header": [
+          "response": []
+        },
+        {
+          "name": "Cancel job",
+          "event": [
             {
-              "key": "Content-Type",
-              "value": "application/json"
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status ok', () => pm.expect(pm.response.code).to.eql(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('job is cancelled', () => pm.expect(body.status).to.eql('cancelled'));"
+                ],
+                "type": "text/javascript"
+              }
             }
           ],
-          "cookie": [],
-          "body": "{\"id\":\"<uuid>\",\"status\":\"completed\",\"logs\":[],\"dependencies\":[]}"
-        }
-      ]
-    },
-    {
-      "name": "Cancel job",
-      "request": {
-        "method": "POST",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/api/jobs/{{jobId}}/cancel",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "jobs",
-            "{{jobId}}",
-            "cancel"
-          ]
-        }
-      },
-      "response": [
-        {
-          "name": "Cancelled",
-          "originalRequest": {
+          "request": {
+            "description": "Cancels the pending job created at the start of the folder.",
             "method": "POST",
             "header": [],
-            "url": "{{baseUrl}}/api/jobs/{{jobId}}/cancel"
-          },
-          "status": "OK",
-          "code": 200,
-          "_postman_previewlanguage": "json",
-          "header": [
-            {
-              "key": "Content-Type",
-              "value": "application/json"
+            "url": {
+              "raw": "{{baseUrl}}/api/jobs/{{jobId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "jobs",
+                "{{jobId}}",
+                "cancel"
+              ]
             }
-          ],
-          "cookie": [],
-          "body": "{\"id\":\"<uuid>\",\"status\":\"cancelled\"}"
+          },
+          "response": []
         }
       ]
     },
     {
-      "name": "Create generic workflow",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"jobs\": [\n    {\n      \"client_id\": \"report\",\n      \"type\": \"generate_report\",\n      \"priority\": 2,\n      \"payload\": {\n        \"requested_by\": \"postman\"\n      }\n    },\n    {\n      \"client_id\": \"upload\",\n      \"type\": \"upload_file\",\n      \"depends_on\": [\n        \"report\"\n      ]\n    },\n    {\n      \"client_id\": \"email\",\n      \"type\": \"send_email\",\n      \"payload\": {\n        \"to\": \"demo@example.com\"\n      },\n      \"depends_on\": [\n        \"upload\"\n      ]\n    }\n  ]\n}"
-        },
-        "url": {
-          "raw": "{{baseUrl}}/api/workflows",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "workflows"
-          ]
-        }
-      },
-      "response": [
+      "name": "Workflows",
+      "item": [
         {
-          "name": "Created",
-          "originalRequest": {
+          "name": "Create generic workflow",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status created', () => pm.expect(pm.response.code).to.eql(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('workflow returns jobs', () => pm.expect(body.jobs).to.be.an('array').and.not.empty);",
+                  "pm.collectionVariables.set('workflowJobId', body.jobs[0].id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "description": "Creates a three-step dependency workflow and saves its first job ID.",
             "method": "POST",
             "header": [
               {
@@ -229,52 +253,69 @@
               "mode": "raw",
               "raw": "{\n  \"jobs\": [\n    {\n      \"client_id\": \"report\",\n      \"type\": \"generate_report\",\n      \"priority\": 2,\n      \"payload\": {\n        \"requested_by\": \"postman\"\n      }\n    },\n    {\n      \"client_id\": \"upload\",\n      \"type\": \"upload_file\",\n      \"depends_on\": [\n        \"report\"\n      ]\n    },\n    {\n      \"client_id\": \"email\",\n      \"type\": \"send_email\",\n      \"payload\": {\n        \"to\": \"demo@example.com\"\n      },\n      \"depends_on\": [\n        \"upload\"\n      ]\n    }\n  ]\n}"
             },
-            "url": "{{baseUrl}}/api/workflows"
+            "url": {
+              "raw": "{{baseUrl}}/api/workflows",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workflows"
+              ]
+            }
           },
-          "status": "Created",
-          "code": 201,
-          "_postman_previewlanguage": "json",
-          "header": [
+          "response": []
+        },
+        {
+          "name": "Get workflow job",
+          "event": [
             {
-              "key": "Content-Type",
-              "value": "application/json"
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status ok', () => pm.expect(pm.response.code).to.eql(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('workflow job is returned', () => pm.expect(body.id).to.eql(pm.collectionVariables.get('workflowJobId')));"
+                ],
+                "type": "text/javascript"
+              }
             }
           ],
-          "cookie": [],
-          "body": "{\"workflow_id\":\"<uuid>\",\"jobs\":[{\"client_id\":\"report\",\"id\":\"<uuid>\"},{\"client_id\":\"upload\",\"id\":\"<uuid>\"},{\"client_id\":\"email\",\"id\":\"<uuid>\"}]}"
-        }
-      ]
-    },
-    {
-      "name": "Create report email demo workflow",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{}"
+          "request": {
+            "description": "Gets the first job returned by the generic workflow request.",
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/jobs/{{workflowJobId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "jobs",
+                "{{workflowJobId}}"
+              ]
+            }
+          },
+          "response": []
         },
-        "url": {
-          "raw": "{{baseUrl}}/api/workflows/report-email-demo",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "workflows",
-            "report-email-demo"
-          ]
-        }
-      },
-      "response": [
         {
-          "name": "Created",
-          "originalRequest": {
+          "name": "Create report email demo workflow",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status created', () => pm.expect(pm.response.code).to.eql(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('demo workflow returns jobs', () => pm.expect(body.jobs).to.be.an('array').and.not.empty);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "description": "Creates the built-in report, upload, and email demonstration workflow.",
             "method": "POST",
             "header": [
               {
@@ -286,91 +327,86 @@
               "mode": "raw",
               "raw": "{}"
             },
-            "url": "{{baseUrl}}/api/workflows/report-email-demo"
-          },
-          "status": "Created",
-          "code": 201,
-          "_postman_previewlanguage": "json",
-          "header": [
-            {
-              "key": "Content-Type",
-              "value": "application/json"
+            "url": {
+              "raw": "{{baseUrl}}/api/workflows/report-email-demo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workflows",
+                "report-email-demo"
+              ]
             }
-          ],
-          "cookie": [],
-          "body": "{\"workflow_id\":\"<uuid>\",\"jobs\":[\"<report-job-uuid>\",\"<upload-job-uuid>\",\"<email-job-uuid>\"]}"
+          },
+          "response": []
         }
       ]
     },
     {
-      "name": "List dead letter queue",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/api/dlq",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "dlq"
-          ]
-        }
-      },
-      "response": [
+      "name": "DLQ",
+      "item": [
         {
-          "name": "OK",
-          "originalRequest": {
+          "name": "List dead letter queue",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status ok', () => pm.expect(pm.response.code).to.eql(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('dead letter list has items', () => pm.expect(body.items).to.be.an('array'));",
+                  "const first = body.items[0];",
+                  "pm.collectionVariables.set('dlqJobAvailable', first ? 'true' : 'false');",
+                  "if (first) pm.collectionVariables.set('jobId', first.job_id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "description": "Lists dead letter entries and selects the first job for the retry request.",
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/api/dlq"
+            "url": {
+              "raw": "{{baseUrl}}/api/dlq",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dlq"
+              ]
+            }
           },
-          "status": "OK",
-          "code": 200,
-          "_postman_previewlanguage": "json",
-          "header": [
+          "response": []
+        },
+        {
+          "name": "Retry dead letter job",
+          "event": [
             {
-              "key": "Content-Type",
-              "value": "application/json"
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "if (pm.collectionVariables.get('dlqJobAvailable') !== 'true') pm.execution.skipRequest();"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status ok', () => pm.expect(pm.response.code).to.eql(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('dead letter job is pending', () => pm.expect(body.status).to.eql('pending'));"
+                ],
+                "type": "text/javascript"
+              }
             }
           ],
-          "cookie": [],
-          "body": "{\"items\":[{\"id\":\"<dlq-uuid>\",\"job_id\":\"<uuid>\",\"error_message\":\"Intentional failure triggered by payload\",\"error_context\":{\"type\":\"send_email\"},\"retry_count\":3,\"manual_retry_count\":0,\"moved_at\":\"2026-06-11T12:00:00.000Z\",\"resolved_at\":null,\"created_at\":\"2026-06-11T12:00:00.000Z\",\"type\":\"send_email\",\"priority\":2}]}"
-        }
-      ]
-    },
-    {
-      "name": "Retry dead letter job",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{}"
-        },
-        "url": {
-          "raw": "{{baseUrl}}/api/dlq/{{jobId}}/retry",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "dlq",
-            "{{jobId}}",
-            "retry"
-          ]
-        }
-      },
-      "response": [
-        {
-          "name": "Retry scheduled",
-          "originalRequest": {
+          "request": {
+            "description": "Retries {{jobId}} only when it is actually in the DLQ; run the list request first.",
             "method": "POST",
             "header": [
               {
@@ -382,90 +418,70 @@
               "mode": "raw",
               "raw": "{}"
             },
-            "url": "{{baseUrl}}/api/dlq/{{jobId}}/retry"
-          },
-          "status": "OK",
-          "code": 200,
-          "_postman_previewlanguage": "json",
-          "header": [
-            {
-              "key": "Content-Type",
-              "value": "application/json"
+            "url": {
+              "raw": "{{baseUrl}}/api/dlq/{{jobId}}/retry",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dlq",
+                "{{jobId}}",
+                "retry"
+              ]
             }
-          ],
-          "cookie": [],
-          "body": "{\"id\":\"<uuid>\",\"type\":\"send_email\",\"status\":\"pending\",\"retry_count\":0,\"last_error\":null,\"scheduled_at\":\"2026-06-11T12:05:00.000Z\",\"locked_by\":null,\"locked_until\":null}"
+          },
+          "response": []
         }
       ]
     },
     {
-      "name": "Get dashboard",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/api/dashboard",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "dashboard"
-          ]
-        }
-      },
-      "response": [
+      "name": "Live Events",
+      "item": [
         {
-          "name": "OK",
-          "originalRequest": {
-            "method": "GET",
-            "header": [],
-            "url": "{{baseUrl}}/api/dashboard"
-          },
-          "status": "OK",
-          "code": 200,
-          "_postman_previewlanguage": "json",
-          "header": [
+          "name": "Job event stream",
+          "event": [
             {
-              "key": "Content-Type",
-              "value": "application/json"
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status ok', () => pm.expect(pm.response.code).to.eql(200));",
+                  "pm.test('response is an event stream', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('text/event-stream'));"
+                ],
+                "type": "text/javascript"
+              }
             }
           ],
-          "cookie": [],
-          "body": "{\"pending\":3,\"processing\":1,\"completed\":12,\"failed\":1,\"cancelled\":2,\"dlq\":1,\"active_workers\":2}"
+          "request": {
+            "description": "Long-lived SSE stream for manual use; exclude this request from Collection Runner runs.",
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "text/event-stream"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/jobs?after_id=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "jobs"
+              ],
+              "query": [
+                {
+                  "key": "after_id",
+                  "value": "0"
+                }
+              ]
+            }
+          },
+          "response": []
         }
       ]
-    },
-    {
-      "name": "Job event stream",
-      "request": {
-        "description": "Long-lived SSE request. Use Send and Download or curl -N; each unnamed message contains a job_logs row in its data field.",
-        "method": "GET",
-        "header": [
-          {
-            "key": "Accept",
-            "value": "text/event-stream"
-          }
-        ],
-        "url": {
-          "raw": "{{baseUrl}}/api/events/jobs?after_id=0",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "events",
-            "jobs"
-          ],
-          "query": [
-            {
-              "key": "after_id",
-              "value": "0"
-            }
-          ]
-        }
-      },
-      "response": []
     }
   ]
 }
