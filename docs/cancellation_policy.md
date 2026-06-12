@@ -2,20 +2,23 @@
 
 ## Definitions
 
-1. **Pending/Scheduled phase**: For a job that has not yet started, a cancellation results in immediate transition from \`pending\` to \`cancelled\`. It never enters the evaluation heap.
-2. **Processing phase**: When a job is actively running inside a worker, a hard system interrupt is **not possible** natively without destructive kill behaviors. Instead, we perform **Cooperative Cancellation**.
-   - Event loop checkpoints verify the job's heartbeat in the database (\`cancellation_requested_at\`).
-   - If a cancellation token is flagged, side-effect intensive segments abort safely.
-   - Operations that act as critical single-fire commitments (such as emitting emails via SMTP) bypass interruption if they've already started to avoid partial deliveries.
+1. **Pending/Scheduled phase**: Cancelling a job that has not started immediately changes its status from `pending` to `cancelled`. Cancelled rows are excluded from worker candidate queries, so the job never enters a worker's heap.
+2. **Processing phase**: Cancellation is cooperative. The runner checks `cancellation_requested_at` before each handler step and again before writing the completed status. If cancellation has been requested, it stops running further steps, clears the lease, and marks the job `cancelled`.
+   - The worker does not hard-kill a handler. A side effect that already finished cannot be safely undone, and interrupting it midway could leave partially applied work.
+   - The handlers are mock integrations that perform real local I/O under `/data`: they write a report, copy it to a mock bucket, and append an email record to a local outbox. They do not send real SMTP email.
+   - Delivery is at least once because an expired lease can cause a job to run again. Deterministic file paths, atomic replacement, and an exclusive email marker make repeated handler execution idempotent.
 
 ## Retry Math
+
 When a handler fails:
-- \`retry_count\` defines the volume of post-failure executions recorded thus far.
-- Total executions equal \`max_retries\` (defaulted 3) + initial attempt = 4 runs.
-- Backoffs resolve to ~1, ~5, and ~25 seconds with a ±25% random jitter dynamically spread.
-- Upon 4th consecutive fault, the job routes to the Dead Letter Queue (DLQ).
+
+- `retry_count` records failed executions.
+- `max_retries = 3` allows three retries after the initial execution, for up to four executions in total.
+- The three retry delays are approximately 1, 5, and 25 seconds, each with plus or minus 25 percent jitter.
+- A fourth failure marks the job `failed` and moves it to the Dead Letter Queue (DLQ).
 
 ## Recurrence Rules
-- **No overlapping timelines**: A succeeding schedule instance is evaluated post-completion of the prior run. Delay limits self-encroaching.
-- **No backfill**: In scenarios where workers suffer extreme latency, catching up aligns sequentially relative to \`now\`, dropping obsolete inter-loop steps smoothly without explosive flooding.
-- **Fail constraint**: Recurring cycles cease if DLQ limits are hit or if intentionally cancelled.
+
+- **No overlap**: A successful recurring job creates its successor only after the current job is marked complete.
+- **No backfill**: The next time is based on the previous `scheduled_at` plus the interval. If that time is already in the past, it is clamped to the current time instead of creating missed runs.
+- **Stop on cancellation or terminal failure**: A cancelled or failed recurring job does not create a successor, so the recurrence chain ends.

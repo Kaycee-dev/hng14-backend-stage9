@@ -190,6 +190,253 @@
       ]
     },
     {
+      "name": "Create generic workflow",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"jobs\": [\n    {\n      \"client_id\": \"report\",\n      \"type\": \"generate_report\",\n      \"priority\": 2,\n      \"payload\": {\n        \"requested_by\": \"postman\"\n      }\n    },\n    {\n      \"client_id\": \"upload\",\n      \"type\": \"upload_file\",\n      \"depends_on\": [\n        \"report\"\n      ]\n    },\n    {\n      \"client_id\": \"email\",\n      \"type\": \"send_email\",\n      \"payload\": {\n        \"to\": \"demo@example.com\"\n      },\n      \"depends_on\": [\n        \"upload\"\n      ]\n    }\n  ]\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/workflows",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "workflows"
+          ]
+        }
+      },
+      "response": [
+        {
+          "name": "Created",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jobs\": [\n    {\n      \"client_id\": \"report\",\n      \"type\": \"generate_report\",\n      \"priority\": 2,\n      \"payload\": {\n        \"requested_by\": \"postman\"\n      }\n    },\n    {\n      \"client_id\": \"upload\",\n      \"type\": \"upload_file\",\n      \"depends_on\": [\n        \"report\"\n      ]\n    },\n    {\n      \"client_id\": \"email\",\n      \"type\": \"send_email\",\n      \"payload\": {\n        \"to\": \"demo@example.com\"\n      },\n      \"depends_on\": [\n        \"upload\"\n      ]\n    }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/api/workflows"
+          },
+          "status": "Created",
+          "code": 201,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "cookie": [],
+          "body": "{\"workflow_id\":\"<uuid>\",\"jobs\":[{\"client_id\":\"report\",\"id\":\"<uuid>\"},{\"client_id\":\"upload\",\"id\":\"<uuid>\"},{\"client_id\":\"email\",\"id\":\"<uuid>\"}]}"
+        }
+      ]
+    },
+    {
+      "name": "Create report email demo workflow",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/workflows/report-email-demo",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "workflows",
+            "report-email-demo"
+          ]
+        }
+      },
+      "response": [
+        {
+          "name": "Created",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": "{{baseUrl}}/api/workflows/report-email-demo"
+          },
+          "status": "Created",
+          "code": 201,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "cookie": [],
+          "body": "{\"workflow_id\":\"<uuid>\",\"jobs\":[\"<report-job-uuid>\",\"<upload-job-uuid>\",\"<email-job-uuid>\"]}"
+        }
+      ]
+    },
+    {
+      "name": "List dead letter queue",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/dlq",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "dlq"
+          ]
+        }
+      },
+      "response": [
+        {
+          "name": "OK",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/dlq"
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "cookie": [],
+          "body": "{\"items\":[{\"id\":\"<dlq-uuid>\",\"job_id\":\"<uuid>\",\"error_message\":\"Intentional failure triggered by payload\",\"error_context\":{\"type\":\"send_email\"},\"retry_count\":3,\"manual_retry_count\":0,\"moved_at\":\"2026-06-11T12:00:00.000Z\",\"resolved_at\":null,\"created_at\":\"2026-06-11T12:00:00.000Z\",\"type\":\"send_email\",\"priority\":2}]}"
+        }
+      ]
+    },
+    {
+      "name": "Retry dead letter job",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/dlq/{{jobId}}/retry",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "dlq",
+            "{{jobId}}",
+            "retry"
+          ]
+        }
+      },
+      "response": [
+        {
+          "name": "Retry scheduled",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": "{{baseUrl}}/api/dlq/{{jobId}}/retry"
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "cookie": [],
+          "body": "{\"id\":\"<uuid>\",\"type\":\"send_email\",\"status\":\"pending\",\"retry_count\":0,\"last_error\":null,\"scheduled_at\":\"2026-06-11T12:05:00.000Z\",\"locked_by\":null,\"locked_until\":null}"
+        }
+      ]
+    },
+    {
+      "name": "Get dashboard",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/dashboard",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "dashboard"
+          ]
+        }
+      },
+      "response": [
+        {
+          "name": "OK",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/dashboard"
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "cookie": [],
+          "body": "{\"pending\":3,\"processing\":1,\"completed\":12,\"failed\":1,\"cancelled\":2,\"dlq\":1,\"active_workers\":2}"
+        }
+      ]
+    },
+    {
       "name": "Job event stream",
       "request": {
         "description": "Long-lived SSE request. Use Send and Download or curl -N; each unnamed message contains a job_logs row in its data field.",
