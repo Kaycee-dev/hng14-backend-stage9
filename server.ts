@@ -1,4 +1,5 @@
 import express from "express";
+import fs from "fs";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { getDb } from "./src/db";
@@ -7,6 +8,10 @@ import {
   type WfJob
 } from "./src/services/dag_validation";
 import cors from "cors";
+
+const openapiSpec = JSON.parse(
+  fs.readFileSync(path.join(process.cwd(), "openapi.json"), "utf8")
+);
 
 // Keep zero-setup development convenient while production uses separate workers.
 import { runWorkerLoop } from "./src/worker/main";
@@ -267,6 +272,16 @@ data: ${payload}
     
     req.on('close', () => { clearInterval(interval); });
   });
+
+  app.get("/openapi.json", (_req, res) => res.json(openapiSpec));
+  app.get("/docs", (_req, res) =>
+    res.type("html").send(`<!doctype html><html><head><meta charset="utf-8"/>
+<title>Dilamme API</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css"/>
+</head><body><div id="swagger-ui"></div>
+<script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+<script>window.onload=()=>SwaggerUIBundle({url:"/openapi.json",dom_id:"#swagger-ui"});</script>
+</body></html>`));
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {

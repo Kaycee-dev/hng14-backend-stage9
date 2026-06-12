@@ -1,0 +1,1035 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Dilamme Job Orchestrator API",
+    "version": "1.0.0",
+    "description": "API for scheduling jobs, managing workflows, monitoring workers, retrying dead-lettered jobs, and streaming job events."
+  },
+  "servers": [
+    {
+      "url": "https://hng14-stage9-vm.duckdns.org"
+    },
+    {
+      "url": "http://localhost:3000"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Dashboard"
+    },
+    {
+      "name": "Jobs"
+    },
+    {
+      "name": "Dead Letter Queue"
+    },
+    {
+      "name": "Workflows"
+    },
+    {
+      "name": "Events"
+    }
+  ],
+  "paths": {
+    "/api/dashboard": {
+      "get": {
+        "tags": [
+          "Dashboard"
+        ],
+        "summary": "Get scheduler dashboard totals",
+        "operationId": "getDashboard",
+        "responses": {
+          "200": {
+            "description": "Current job, dead-letter, and worker totals",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Dashboard"
+                },
+                "example": {
+                  "pending": 3,
+                  "processing": 2,
+                  "completed": 18,
+                  "failed": 1,
+                  "cancelled": 1,
+                  "dlq": 1,
+                  "active_workers": 2
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/jobs": {
+      "post": {
+        "tags": [
+          "Jobs"
+        ],
+        "summary": "Create a job",
+        "operationId": "createJob",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateJobRequest"
+              },
+              "example": {
+                "type": "generate_report",
+                "priority": 2,
+                "payload": {
+                  "requested_by": "swagger"
+                },
+                "scheduled_at": "2026-06-12T12:00:00.000Z"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Job created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Job"
+                },
+                "example": {
+                  "id": "34eca3af-eec5-4f03-b666-f0e2b631c390",
+                  "type": "generate_report",
+                  "payload": {
+                    "requested_by": "swagger"
+                  },
+                  "priority": 2,
+                  "status": "pending",
+                  "scheduled_at": "2026-06-12T12:00:00.000Z",
+                  "recurring_interval": null,
+                  "retry_count": 0,
+                  "max_retries": 3,
+                  "created_at": "2026-06-12T11:55:00.000Z",
+                  "updated_at": "2026-06-12T11:55:00.000Z"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Jobs"
+        ],
+        "summary": "List recent jobs",
+        "operationId": "listJobs",
+        "responses": {
+          "200": {
+            "description": "Up to 100 jobs ordered by creation time",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "items"
+                  ],
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Job"
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "items": [
+                    {
+                      "id": "34eca3af-eec5-4f03-b666-f0e2b631c390",
+                      "type": "generate_report",
+                      "payload": {
+                        "requested_by": "swagger"
+                      },
+                      "priority": 2,
+                      "status": "pending",
+                      "scheduled_at": "2026-06-12T12:00:00.000Z",
+                      "retry_count": 0,
+                      "max_retries": 3,
+                      "created_at": "2026-06-12T11:55:00.000Z",
+                      "updated_at": "2026-06-12T11:55:00.000Z"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/jobs/{id}": {
+      "get": {
+        "tags": [
+          "Jobs"
+        ],
+        "summary": "Get a job with logs and dependencies",
+        "operationId": "getJob",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/JobId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Job details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Job"
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "logs",
+                        "dependencies"
+                      ],
+                      "properties": {
+                        "logs": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/JobLog"
+                          }
+                        },
+                        "dependencies": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "uuid"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "id": "34eca3af-eec5-4f03-b666-f0e2b631c390",
+                  "type": "generate_report",
+                  "payload": {
+                    "requested_by": "swagger"
+                  },
+                  "priority": 2,
+                  "status": "completed",
+                  "scheduled_at": "2026-06-12T12:00:00.000Z",
+                  "retry_count": 0,
+                  "max_retries": 3,
+                  "result": {
+                    "file_path": "/data/reports/34eca3af-eec5-4f03-b666-f0e2b631c390.csv",
+                    "checksum": "5c519af1010d81be85e8877b9a9c41fdce2bb767af89b812cc0e968090ba3f8c"
+                  },
+                  "created_at": "2026-06-12T11:55:00.000Z",
+                  "updated_at": "2026-06-12T12:00:03.000Z",
+                  "logs": [
+                    {
+                      "id": 42,
+                      "job_id": "34eca3af-eec5-4f03-b666-f0e2b631c390",
+                      "event_type": "job.completed",
+                      "level": "info",
+                      "message": "Job completed",
+                      "created_at": "2026-06-12T12:00:03.000Z"
+                    }
+                  ],
+                  "dependencies": []
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/jobs/{id}/cancel": {
+      "post": {
+        "tags": [
+          "Jobs"
+        ],
+        "summary": "Cancel a pending job or request cancellation",
+        "operationId": "cancelJob",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/JobId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cancelled job or job with cancellation requested",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Job"
+                },
+                "example": {
+                  "id": "34eca3af-eec5-4f03-b666-f0e2b631c390",
+                  "type": "generate_report",
+                  "payload": {},
+                  "priority": 2,
+                  "status": "cancelled",
+                  "scheduled_at": "2026-06-12T12:00:00.000Z",
+                  "retry_count": 0,
+                  "max_retries": 3,
+                  "cancelled_at": "2026-06-12T11:56:00.000Z",
+                  "created_at": "2026-06-12T11:55:00.000Z",
+                  "updated_at": "2026-06-12T11:56:00.000Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The job has already finished",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": "Cannot cancel a finished job"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/dlq": {
+      "get": {
+        "tags": [
+          "Dead Letter Queue"
+        ],
+        "summary": "List unresolved dead-letter entries",
+        "operationId": "listDeadLetterQueue",
+        "responses": {
+          "200": {
+            "description": "Unresolved dead-letter entries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "items"
+                  ],
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/DeadLetterEntry"
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "items": [
+                    {
+                      "id": "5dc21a9c-224d-41a4-9c12-8f5d448073d4",
+                      "job_id": "34eca3af-eec5-4f03-b666-f0e2b631c390",
+                      "error_message": "Report generation failed",
+                      "error_context": {
+                        "worker_id": "worker-1"
+                      },
+                      "retry_count": 3,
+                      "manual_retry_count": 0,
+                      "moved_at": "2026-06-12T12:05:00.000Z",
+                      "resolved_at": null,
+                      "created_at": "2026-06-12T12:05:00.000Z",
+                      "type": "generate_report",
+                      "priority": 2
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/dlq/{id}/retry": {
+      "post": {
+        "tags": [
+          "Dead Letter Queue"
+        ],
+        "summary": "Retry a dead-lettered job",
+        "operationId": "retryDeadLetterJob",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/JobId"
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false
+              },
+              "example": {}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Job returned to the pending queue",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Job"
+                },
+                "example": {
+                  "id": "34eca3af-eec5-4f03-b666-f0e2b631c390",
+                  "type": "generate_report",
+                  "payload": {},
+                  "priority": 2,
+                  "status": "pending",
+                  "scheduled_at": "2026-06-12T12:10:00.000Z",
+                  "retry_count": 0,
+                  "max_retries": 3,
+                  "last_error": null,
+                  "created_at": "2026-06-12T11:55:00.000Z",
+                  "updated_at": "2026-06-12T12:10:00.000Z"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/workflows": {
+      "post": {
+        "tags": [
+          "Workflows"
+        ],
+        "summary": "Create a dependency workflow",
+        "operationId": "createWorkflow",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "jobs"
+                ],
+                "properties": {
+                  "jobs": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "$ref": "#/components/schemas/WorkflowJobRequest"
+                    }
+                  }
+                }
+              },
+              "example": {
+                "jobs": [
+                  {
+                    "client_id": "report",
+                    "type": "generate_report",
+                    "priority": 2,
+                    "payload": {
+                      "requested_by": "swagger"
+                    }
+                  },
+                  {
+                    "client_id": "upload",
+                    "type": "upload_file",
+                    "depends_on": [
+                      "report"
+                    ]
+                  },
+                  {
+                    "client_id": "email",
+                    "type": "send_email",
+                    "payload": {
+                      "to": "demo@example.com"
+                    },
+                    "depends_on": [
+                      "upload"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Workflow and jobs created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowResponse"
+                },
+                "example": {
+                  "workflow_id": "704c4bac-8409-4ac5-902f-64cb027d43ac",
+                  "jobs": [
+                    {
+                      "client_id": "report",
+                      "id": "34eca3af-eec5-4f03-b666-f0e2b631c390"
+                    },
+                    {
+                      "client_id": "upload",
+                      "id": "768a31a2-aa3a-455c-b543-424df21fd294"
+                    },
+                    {
+                      "client_id": "email",
+                      "id": "a9663d24-b5d4-4b4c-9406-9bf2eb6c3d70"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid workflow graph",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": "cycle detected"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/workflows/report-email-demo": {
+      "post": {
+        "tags": [
+          "Workflows"
+        ],
+        "summary": "Create the report, upload, and email demo workflow",
+        "operationId": "createReportEmailDemoWorkflow",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false
+              },
+              "example": {}
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Demo workflow created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "workflow_id",
+                    "jobs"
+                  ],
+                  "properties": {
+                    "workflow_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "jobs": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "format": "uuid"
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "workflow_id": "704c4bac-8409-4ac5-902f-64cb027d43ac",
+                  "jobs": [
+                    "34eca3af-eec5-4f03-b666-f0e2b631c390",
+                    "768a31a2-aa3a-455c-b543-424df21fd294",
+                    "a9663d24-b5d4-4b4c-9406-9bf2eb6c3d70"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/events/jobs": {
+      "get": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Stream job events",
+        "description": "Opens a long-lived Server-Sent Events stream and emits job log records newer than after_id.",
+        "operationId": "streamJobEvents",
+        "parameters": [
+          {
+            "name": "after_id",
+            "in": "query",
+            "description": "Only emit events with an ID greater than this value.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Server-Sent Events stream",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "id: 42\ndata: {\"id\":42,\"job_id\":\"34eca3af-eec5-4f03-b666-f0e2b631c390\",\"event_type\":\"job.completed\",\"message\":\"Job completed\",\"created_at\":\"2026-06-12T12:00:03.000Z\",\"context\":null}\n\n"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "JobId": {
+        "name": "id",
+        "in": "path",
+        "description": "Job UUID",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    },
+    "responses": {
+      "NotFound": {
+        "description": "Job not found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "error": "Not found"
+            }
+          }
+        }
+      },
+      "InternalError": {
+        "description": "Internal server error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "error": "Internal server error"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "Dashboard": {
+        "type": "object",
+        "required": [
+          "pending",
+          "processing",
+          "completed",
+          "failed",
+          "cancelled",
+          "dlq",
+          "active_workers"
+        ],
+        "properties": {
+          "pending": {
+            "type": "integer"
+          },
+          "processing": {
+            "type": "integer"
+          },
+          "completed": {
+            "type": "integer"
+          },
+          "failed": {
+            "type": "integer"
+          },
+          "cancelled": {
+            "type": "integer"
+          },
+          "dlq": {
+            "type": "integer"
+          },
+          "active_workers": {
+            "type": "integer"
+          }
+        }
+      },
+      "CreateJobRequest": {
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "example": "generate_report"
+          },
+          "priority": {
+            "type": "integer",
+            "default": 2
+          },
+          "payload": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "scheduled_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "recurring_interval": {
+            "type": "string",
+            "nullable": true,
+            "example": "5 minutes"
+          },
+          "parent_job_id": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        }
+      },
+      "Job": {
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "payload",
+          "priority",
+          "status",
+          "scheduled_at",
+          "retry_count",
+          "max_retries",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string"
+          },
+          "payload": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "priority": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "processing",
+              "completed",
+              "failed",
+              "cancelled"
+            ]
+          },
+          "scheduled_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "recurring_interval": {
+            "type": "string",
+            "nullable": true
+          },
+          "retry_count": {
+            "type": "integer"
+          },
+          "max_retries": {
+            "type": "integer"
+          },
+          "last_error": {
+            "type": "string",
+            "nullable": true
+          },
+          "result": {
+            "type": "object",
+            "additionalProperties": true,
+            "nullable": true
+          },
+          "locked_by": {
+            "type": "string",
+            "nullable": true
+          },
+          "locked_until": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "cancellation_requested_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "failed_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "cancelled_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "parent_job_id": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "workflow_id": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        }
+      },
+      "JobLog": {
+        "type": "object",
+        "required": [
+          "id",
+          "event_type",
+          "level",
+          "created_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "job_id": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "event_type": {
+            "type": "string"
+          },
+          "level": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "context": {
+            "type": "object",
+            "additionalProperties": true,
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "DeadLetterEntry": {
+        "type": "object",
+        "required": [
+          "id",
+          "job_id",
+          "manual_retry_count",
+          "moved_at",
+          "created_at",
+          "type",
+          "priority"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "job_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "error_message": {
+            "type": "string",
+            "nullable": true
+          },
+          "error_context": {
+            "type": "object",
+            "additionalProperties": true,
+            "nullable": true
+          },
+          "retry_count": {
+            "type": "integer",
+            "nullable": true
+          },
+          "manual_retry_count": {
+            "type": "integer"
+          },
+          "moved_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "resolved_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "type": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "integer"
+          }
+        }
+      },
+      "WorkflowJobRequest": {
+        "type": "object",
+        "required": [
+          "client_id",
+          "type"
+        ],
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "payload": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "priority": {
+            "type": "integer",
+            "default": 2
+          },
+          "scheduled_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "recurring_interval": {
+            "type": "string",
+            "nullable": true
+          },
+          "depends_on": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "WorkflowResponse": {
+        "type": "object",
+        "required": [
+          "workflow_id",
+          "jobs"
+        ],
+        "properties": {
+          "workflow_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "jobs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "client_id",
+                "id"
+              ],
+              "properties": {
+                "client_id": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
