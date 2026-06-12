@@ -19,7 +19,7 @@ export function Sidebar() {
           <div className="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center">
             <div className="w-4 h-4 border-2 border-white rounded-sm"></div>
           </div>
-          <span className="font-bold text-xl tracking-tight">PRECISION</span>
+          <span className="font-bold text-xl tracking-tight">Dilamme</span>
         </div>
       </div>
       <nav className="flex-1 py-6 px-4 space-y-2">

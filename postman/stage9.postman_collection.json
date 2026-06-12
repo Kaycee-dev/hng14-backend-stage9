@@ -8,7 +8,7 @@
   "variable": [
     {
       "key": "baseUrl",
-      "value": "http://localhost:3000"
+      "value": "https://hng14-stage9-vm.duckdns.org"
     },
     {
       "key": "jobId",
