@@ -32,26 +32,26 @@ export function Dashboard() {
   ];
 
   return (
-    <div className="flex-1 flex flex-col">
-      <header className="h-20 border-b border-slate-800 px-10 flex items-center justify-between">
-        <div>
+    <div className="flex min-w-0 flex-1 flex-col">
+      <header className="flex min-h-20 items-center border-b border-slate-800 px-4 py-5 sm:px-6 lg:px-10">
+        <div className="min-w-0">
           <h1 className="text-2xl font-light text-slate-200">System <span className="font-bold">Overview</span></h1>
           <p className="text-xs text-slate-500">Live Workspace Status</p>
         </div>
       </header>
 
-      <div className="p-10 flex-1 space-y-6">
+      <div className="flex-1 space-y-5 p-4 sm:p-6 lg:p-10">
         {stats.dlq >= 5 && (
-          <div className="p-4 bg-red-500/10 border-l-4 border border-red-500/50 rounded-xl text-red-500">
+          <div className="break-words rounded-xl border border-l-4 border-red-500/50 bg-red-500/10 p-4 text-red-500">
             <strong>Alert: </strong> DLQ Threshold Reached! There are 5 or more failed jobs requiring manual intervention.
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 xl:gap-6">
           {cards.map(c => (
-            <div key={c.label} className="bg-slate-900/50 border border-slate-800 p-6 rounded-2xl">
+            <div key={c.label} className="min-w-0 rounded-2xl border border-slate-800 bg-slate-900/50 p-5 sm:p-6">
               <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">{c.label}</p>
-              <div className="flex items-baseline gap-2">
+              <div className="flex flex-wrap items-baseline gap-2">
                 <span className="text-3xl font-bold">{c.value}</span>
                 <span className="text-indigo-400 text-xs">{c.indicator}</span>
               </div>

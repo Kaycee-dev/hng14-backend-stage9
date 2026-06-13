@@ -9,9 +9,9 @@ import { WorkflowDemo } from "./pages/WorkflowDemo";
 export default function App() {
   return (
     <BrowserRouter>
-      <div className="flex min-h-screen bg-[#0A0C10] text-slate-200 font-sans font-inter">
+      <div className="flex min-h-screen flex-col bg-[#0A0C10] font-sans font-inter text-slate-200 lg:flex-row">
         <Sidebar />
-        <main className="flex-1 overflow-x-hidden">
+        <main className="min-w-0 w-full flex-1">
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/jobs" element={<Jobs />} />
