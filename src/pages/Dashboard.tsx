@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useJobEvents } from "../hooks/useJobEvents";
+import { useCoalescedRefresh, useJobEvents } from "../hooks/useJobEvents";
 
 export function Dashboard() {
   const [stats, setStats] = useState<any>({
@@ -7,16 +7,19 @@ export function Dashboard() {
   });
   const event = useJobEvents();
 
+  function fetchStats() {
+    return fetch("/api/dashboard").then(res => res.json()).then(setStats).catch(console.error);
+  }
+
+  const scheduleEventRefresh = useCoalescedRefresh(fetchStats);
+
   useEffect(() => {
-    fetch("/api/dashboard").then(res => res.json()).then(setStats).catch(console.error);
+    fetchStats();
   }, []);
 
   useEffect(() => {
-    if (event) {
-      // Re-fetch stats on any event to keep dashboard highly consistent
-      fetch("/api/dashboard").then(res => res.json()).then(setStats).catch(console.error);
-    }
-  }, [event]);
+    if (event) scheduleEventRefresh();
+  }, [event, scheduleEventRefresh]);
 
   const cards = [
     { label: "Pending", value: stats.pending, indicator: "In Queue" },

@@ -245,12 +245,45 @@ async function startServer() {
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     res.flushHeaders();
-    
-    let last = parseInt(req.query.after_id as string) || 0;
-    
-    const interval = setInterval(async () => {
+
+    const parseCursor = (value: unknown) => {
+      if (typeof value !== 'string' || !/^\d+$/.test(value)) return Number.NaN;
+      return Number(value);
+    };
+    const queryCursor = parseCursor(req.query.after_id);
+    const headerCursor = parseCursor(req.get('Last-Event-ID'));
+    let last = Number.isSafeInteger(queryCursor)
+      ? queryCursor
+      : Number.isSafeInteger(headerCursor)
+        ? headerCursor
+        : 0;
+    let closed = false;
+    let pollTimer: ReturnType<typeof setTimeout> | null = null;
+    let heartbeatTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const cleanup = () => {
+      if (closed) return;
+      closed = true;
+      if (pollTimer) clearTimeout(pollTimer);
+      if (heartbeatTimer) clearTimeout(heartbeatTimer);
+    };
+
+    const scheduleHeartbeat = () => {
+      if (closed) return;
+      if (heartbeatTimer) clearTimeout(heartbeatTimer);
+      heartbeatTimer = setTimeout(() => {
+        heartbeatTimer = null;
+        if (closed || res.destroyed || res.writableEnded) return;
+        res.write(': heartbeat\n\n');
+        scheduleHeartbeat();
+      }, 15_000);
+    };
+
+    const poll = async () => {
+      if (closed) return;
       try {
         const db = await getDb();
+        if (closed) return;
         const result = await db.query(
           `SELECT id, job_id, event_type, message, created_at, context 
            FROM job_logs WHERE id > $1 ORDER BY id ASC LIMIT 200`,
@@ -258,19 +291,26 @@ async function startServer() {
         );
         
         for (const row of result.rows) {
+          if (closed || res.destroyed || res.writableEnded) return;
           last = row.id;
           const payload = JSON.stringify(row);
           res.write(`id: ${row.id}
 data: ${payload}
 
 `);
+          scheduleHeartbeat();
         }
       } catch (e: any) { 
-        console.error("SSE Poll Error", e.message); 
+        if (!closed) console.error("SSE Poll Error", e.message);
+      } finally {
+        if (!closed) pollTimer = setTimeout(poll, 1000);
       }
-    }, 1000);
-    
-    req.on('close', () => { clearInterval(interval); });
+    };
+
+    req.on('close', cleanup);
+    res.on('close', cleanup);
+    scheduleHeartbeat();
+    void poll();
   });
 
   app.get("/openapi.json", (_req, res) => res.json(openapiSpec));

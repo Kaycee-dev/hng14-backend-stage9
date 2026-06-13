@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useJobEvents } from "../hooks/useJobEvents";
+import { useCoalescedRefresh, useJobEvents } from "../hooks/useJobEvents";
 
 const AGING_THRESHOLD = 300 * 1000;
 
@@ -15,11 +15,15 @@ export function Jobs() {
   const event = useJobEvents();
 
   function fetchJobs() {
-    fetch("/api/jobs").then(r => r.json()).then(d => setJobs(d.items || [])).catch(console.error);
+    return fetch("/api/jobs").then(r => r.json()).then(d => setJobs(d.items || [])).catch(console.error);
   }
 
+  const scheduleEventRefresh = useCoalescedRefresh(fetchJobs);
+
   useEffect(() => { fetchJobs(); }, []);
-  useEffect(() => { if (event) fetchJobs(); }, [event]);
+  useEffect(() => {
+    if (event) scheduleEventRefresh();
+  }, [event, scheduleEventRefresh]);
 
   async function handleCancel(id: string) {
     try {

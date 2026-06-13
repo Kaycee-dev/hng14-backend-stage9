@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useJobEvents } from "../hooks/useJobEvents";
+import { useCoalescedRefresh, useJobEvents } from "../hooks/useJobEvents";
 
 export function WorkflowDemo() {
   const [workflowId, setWorkflowId] = useState<string | null>(null);
@@ -36,11 +36,13 @@ export function WorkflowDemo() {
     } catch (e) { }
   }
 
+  const scheduleEventRefresh = useCoalescedRefresh(() => {
+    if (workflowId) return fetchJobs(workflowId);
+  });
+
   useEffect(() => {
-    if (event && workflowId) {
-      fetchJobs(workflowId);
-    }
-  }, [event]);
+    if (event && workflowId) scheduleEventRefresh();
+  }, [event, workflowId, scheduleEventRefresh]);
 
   return (
     <div className="p-8 max-w-4xl">
